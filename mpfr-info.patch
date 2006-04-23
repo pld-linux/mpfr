@@ -1,0 +1,14 @@
+--- mpfr-2.2.0/mpfr.texi.orig	2005-09-16 12:55:55.000000000 +0200
++++ mpfr-2.2.0/mpfr.texi	2006-04-23 20:49:04.601985250 +0200
+@@ -38,9 +38,9 @@
+ @c  UPDATED-MONTH.
+ 
+ 
+-@dircategory GNU libraries
++@dircategory Libraries
+ @direntry
+-* mpfr: (mpfr).                 Multiple Precision Floating-Point Reliable Library.
++* mpfr: (mpfr).				Multiple Precision Floating-Point Reliable Library
+ @end direntry
+ 
+ @c  html <meta name=description content="...">
