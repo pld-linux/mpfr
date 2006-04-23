@@ -1,0 +1,1226 @@
+diff -Naurd mpfr-2.2.0/lngamma.c mpfr-2.2.0-p1/lngamma.c
+--- mpfr-2.2.0/lngamma.c	2005-09-09 15:17:58.000000000 +0000
++++ mpfr-2.2.0-p1/lngamma.c	2005-09-29 11:27:04.000000000 +0000
+@@ -167,8 +167,8 @@
+   compared = mpfr_cmp_ui (z0, 1);
+ 
+ #ifndef IS_GAMMA
+-  if (compared == 0) /* lngamma(1) = +0 */
+-    return mpfr_set_ui (y, 0, GMP_RNDN);
++  if (compared == 0 || (compared > 0 && mpfr_cmp_ui (z0, 2) == 0))
++    return mpfr_set_ui (y, 0, GMP_RNDN);  /* lngamma(1 or 2) = +0 */
+ #endif
+ 
+   mpfr_init2 (s, MPFR_PREC_MIN);
+diff -Naurd mpfr-2.2.0/tests/tlngamma.c mpfr-2.2.0-p1/tests/tlngamma.c
+--- mpfr-2.2.0/tests/tlngamma.c	2005-09-09 15:17:59.000000000 +0000
++++ mpfr-2.2.0-p1/tests/tlngamma.c	2005-09-29 11:20:34.000000000 +0000
+@@ -79,7 +79,7 @@
+ 
+   mpfr_set_ui (x, 1, GMP_RNDN);
+   mpfr_lngamma (y, x, GMP_RNDN);
+-  if (mpfr_cmp_ui (y, 0))
++  if (mpfr_cmp_ui (y, 0) || MPFR_IS_NEG (y))
+     {
+       printf ("Error for lngamma(1)\n");
+       exit (1);
+@@ -93,6 +93,14 @@
+       exit (1);
+     }
+ 
++  mpfr_set_ui (x, 2, GMP_RNDN);
++  mpfr_lngamma (y, x, GMP_RNDN);
++  if (mpfr_cmp_ui (y, 0) || MPFR_IS_NEG (y))
++    {
++      printf ("Error for lngamma(2)\n");
++      exit (1);
++    }
++
+   mpfr_set_prec (x, 53);
+   mpfr_set_prec (y, 53);
+ 
+diff -Naurd mpfr-2.2.0-p1/mpfr.h mpfr-2.2.0-p2/mpfr.h
+--- mpfr-2.2.0-p1/mpfr.h	2005-09-06 15:02:12.000000000 +0000
++++ mpfr-2.2.0-p2/mpfr.h	2005-09-29 11:36:36.000000000 +0000
+@@ -630,12 +630,17 @@
+  (__builtin_constant_p (_s) && (_s) >= 0 ? \
+    mpfr_cmp_ui ((_f), (_s)) :              \
+    mpfr_cmp_si_2exp ((_f), (_s), 0))
++#if __GNUC__ > 2 || __GNUC_MINOR__ >= 95
+ #undef mpfr_set_ui
+ #define mpfr_set_ui(_f,_u,_r)              \
+  (__builtin_constant_p (_u) && (_u) == 0 ? \
+-   ((_f)->_mpfr_sign = 1,                  \
+-    (_f)->_mpfr_exp = __MPFR_EXP_ZERO, 0): \
+-    mpfr_set_ui (_f,_u,_r))
++   __extension__ ({                        \
++     mpfr_ptr _p = (_f);                   \
++     _p->_mpfr_sign = 1;                   \
++     _p->_mpfr_exp = __MPFR_EXP_ZERO;      \
++     (void) (_r); 0; }) :                  \
++   mpfr_set_ui (_f,_u,_r))
++#endif
+ #undef mpfr_set_si
+ #define mpfr_set_si(_f,_s,_r)              \
+  (__builtin_constant_p (_s) && (_s) >= 0 ? \
+diff -Naurd mpfr-2.2.0-p1/tests/tset_si.c mpfr-2.2.0-p2/tests/tset_si.c
+--- mpfr-2.2.0-p1/tests/tset_si.c	2005-08-18 17:03:17.000000000 +0000
++++ mpfr-2.2.0-p2/tests/tset_si.c	2005-09-29 09:19:39.000000000 +0000
+@@ -72,6 +72,35 @@
+   mpfr_clear (x);
+ }
+ 
++static void
++test_macros (void)
++{
++  mpfr_t x[3];
++  mpfr_ptr p;
++  mpfr_rnd_t r;
++
++  mpfr_inits (x[0], x[1], x[2], NULL);
++  p = x[0];
++  r = 0;
++  mpfr_set_ui (p++, 0, r++);
++  if (p != x[1] || r != 1)
++    {
++      printf ("Error in mpfr_set_ui macro: p - x[0] = %d (expecting 1), "
++              "r = %d (expecting 1)\n", (int) (p - x[0]), r);
++      exit (1);
++    }
++  p = x[0];
++  r = 0;
++  mpfr_set_si (p++, 0, r++);
++  if (p != x[1] || r != 1)
++    {
++      printf ("Error in mpfr_set_si macro: p - x[0] = %d (expecting 1), "
++              "r = %d (expecting 1)\n", (int) (p - x[0]), r);
++      exit (1);
++    }
++  mpfr_clears (x[0], x[1], x[2], NULL);
++}
++
+ /* FIXME: Comparing against mpfr_get_si/ui is not ideal, it'd be better to
+    have all tests examine the bits in mpfr_t for what should come out.  */
+ 
+@@ -324,6 +353,7 @@
+   mpfr_clear (x);
+ 
+   test_2exp ();
++  test_macros ();
+   tests_end_mpfr ();
+   return 0;
+ }
+diff -Naurd mpfr-2.2.0-p2/configure mpfr-2.2.0-p3/configure
+--- mpfr-2.2.0-p2/configure	2005-09-19 13:31:58.000000000 +0000
++++ mpfr-2.2.0-p3/configure	2005-10-02 10:49:55.000000000 +0000
+@@ -10519,7 +10519,7 @@
+       ;;
+ 
+     darwin* | rhapsody*)
+-    if test "$GXX" = yes ; then
++    if test "$GCC" = yes ; then
+       archive_cmds_need_lc=no
+       case "$host_os" in
+       rhapsody* | darwin1.[012])
+diff -Naurd mpfr-2.2.0-p3/tests/tpow.c mpfr-2.2.0-p4/tests/tpow.c
+--- mpfr-2.2.0-p3/tests/tpow.c	2005-06-02 16:12:05.000000000 +0000
++++ mpfr-2.2.0-p4/tests/tpow.c	2005-10-06 09:54:52.000000000 +0000
+@@ -509,6 +509,7 @@
+   for (i = 0; i < 11; i++)
+     for (j = 0; j < 11; j++)
+       {
++        double d;
+         int p;
+         static int q[11][11] = {
+           /*          NaN +inf -inf  +0   -0   +1   -1   +2   -2  +0.5 -0.5 */
+@@ -527,7 +528,7 @@
+         test_pow (r, t[i], t[j], GMP_RNDN);
+         p = mpfr_nan_p (r) ? 0 : mpfr_inf_p (r) ? 1 :
+           mpfr_cmp_ui (r, 0) == 0 ? 2 :
+-          (int) (fabs (mpfr_get_d (r, GMP_RNDN)) * 128.0);
++          (d = mpfr_get_d (r, GMP_RNDN), (int) (ABS(d) * 128.0));
+         if (p != 0 && MPFR_SIGN(r) < 0)
+           p = -p;
+         if (p != q[i][j])
+diff -Naurd mpfr-2.2.0-p4/cache.c mpfr-2.2.0-p5/cache.c
+--- mpfr-2.2.0-p4/cache.c	2005-08-18 16:35:03.000000000 +0000
++++ mpfr-2.2.0-p5/cache.c	2005-11-23 09:04:29.000000000 +0000
+@@ -32,9 +32,9 @@
+ void
+ mpfr_clear_cache (mpfr_cache_t cache)
+ {
+-  if (MPFR_PREC(cache->x) != 0)
++  if (MPFR_PREC (cache->x) != 0)
+     mpfr_clear (cache->x);
+-  MPFR_PREC(cache->x) = 0;
++  MPFR_PREC (cache->x) = 0;
+ }
+ 
+ int
+@@ -47,45 +47,58 @@
+ 
+   MPFR_SAVE_EXPO_MARK (expo);
+ 
+-  /* Check if the cache has been already filled */
+-  if (MPFR_UNLIKELY(pold == 0))
+-    mpfr_init2 (cache->x, prec);
++  if (MPFR_UNLIKELY (prec > pold))
++    {
++      /* No previous result in the cache or the precision of the
++         previous result is not sufficient. */
+ 
+-  /* Check if we can round with the previous result */
+-  else if (MPFR_LIKELY(prec <= pold))
+-    goto round;
++      if (MPFR_UNLIKELY (pold == 0))  /* No previous result. */
++        mpfr_init2 (cache->x, prec);
+ 
+-  /* Update the cache */
+-  pold = prec /*MPFR_PREC_MIN + prec + __gmpfr_ceil_exp2 (prec)*/;
+-  MPFR_ASSERTD (pold >= prec);
+-  mpfr_prec_round (cache->x, pold, GMP_RNDN);
+-  cache->inexact = (*cache->func) (cache->x, GMP_RNDN);
++      /* Update the cache. */
++      pold = prec;
++      mpfr_prec_round (cache->x, pold, GMP_RNDN);
++      cache->inexact = (*cache->func) (cache->x, GMP_RNDN);
++    }
+ 
+- round:
+-  /* First check if the cache has the exact value (Unlikely)
+-     Else the exact value is between (assuming x=cache->x > 0)
+-     x and x+ulp(x) if cache->inexact < 0
+-     x-ulp(x) and x if cache->inexact > 0
+-     and abs(x-exact) <= ulp(x)/2 */
+-  MPFR_ASSERTD (MPFR_IS_POS(cache->x)); /* TODO...*/
+-  /* We must use nextbelow instead of sub_one_ulp, since we know
+-     that the exact value is < 1/2ulp(x) (We want sub_demi_ulp(x)).
+-     Can't use mpfr_set since we need the even flag. */
++  /* First, check if the cache has the exact value (unlikely).
++     Else the exact value is between (assuming x=cache->x > 0):
++       x and x+ulp(x) if cache->inexact < 0,
++       x-ulp(x) and x if cache->inexact > 0,
++     and abs(x-exact) <= ulp(x)/2. */
++  MPFR_ASSERTN (MPFR_IS_POS (cache->x)); /* TODO... */
+   sign = MPFR_SIGN (cache->x);
+   MPFR_SET_EXP (dest, MPFR_GET_EXP (cache->x));
+   MPFR_SET_SIGN (dest, sign);
+-  MPFR_RNDRAW_EVEN (inexact, dest,
+-                    MPFR_MANT (cache->x), MPFR_PREC (cache->x), rnd, sign,
+-                    if (MPFR_UNLIKELY ( ++MPFR_EXP (dest) > __gmpfr_emax))
+-                       mpfr_overflow (dest, rnd, sign) );
+-  /* inexact = mpfr_set (dest, cache->x, rnd); */
+-  if (MPFR_LIKELY(cache->inexact != 0))
++  MPFR_RNDRAW_GEN (inexact, dest,
++                   MPFR_MANT (cache->x), MPFR_PREC (cache->x), rnd, sign,
++                   if (MPFR_UNLIKELY (cache->inexact == 0))
++                     {
++                       if ((sp[0] & ulp) == 0)
++                         {
++                           inexact = -sign;
++                           goto trunc_doit;
++                         }
++                       else
++                         goto addoneulp;
++                     }
++                   else if (cache->inexact < 0)
++                     goto addoneulp;
++                   else
++                     {
++                       inexact = -sign;
++                       goto trunc_doit;
++                     },
++                   if (MPFR_UNLIKELY (++MPFR_EXP (dest) > __gmpfr_emax))
++                     mpfr_overflow (dest, rnd, sign);
++                  );
++  if (MPFR_LIKELY (cache->inexact != 0))
+     {
+       switch (rnd)
+         {
+         case GMP_RNDZ:
+         case GMP_RNDD:
+-          if (MPFR_UNLIKELY(inexact == 0))
++          if (MPFR_UNLIKELY (inexact == 0))
+             {
+               inexact = cache->inexact;
+               if (inexact > 0)
+@@ -93,7 +106,7 @@
+             }
+           break;
+         case GMP_RNDU:
+-          if (MPFR_UNLIKELY(inexact == 0))
++          if (MPFR_UNLIKELY (inexact == 0))
+             {
+               inexact = cache->inexact;
+               if (inexact < 0)
+@@ -101,16 +114,7 @@
+             }
+           break;
+         default: /* GMP_RNDN */
+-          if (MPFR_UNLIKELY(inexact == MPFR_EVEN_INEX ||
+-                            inexact == -MPFR_EVEN_INEX))
+-            {
+-              if (cache->inexact < 0)
+-                mpfr_nextabove (dest);
+-              else
+-                mpfr_nextbelow (dest);
+-              inexact = -inexact;
+-            }
+-          else if (MPFR_UNLIKELY(inexact == 0))
++          if (MPFR_UNLIKELY(inexact == 0))
+             inexact = cache->inexact;
+           break;
+         }
+diff -Naurd mpfr-2.2.0-p4/hypot.c mpfr-2.2.0-p5/hypot.c
+--- mpfr-2.2.0-p4/hypot.c	2005-06-06 13:39:39.000000000 +0000
++++ mpfr-2.2.0-p5/hypot.c	2005-11-23 09:04:29.000000000 +0000
+@@ -73,6 +73,7 @@
+   Ey = MPFR_GET_EXP (y);
+   diff_exp = (mp_exp_unsigned_t) Ex - Ey;
+ 
++  Nx = MPFR_PREC (x);   /* Precision of input variable */
+   Nz = MPFR_PREC (z);   /* Precision of output variable */
+ 
+   /* we have x < 2^Ex thus x^2 < 2^(2*Ex),
+@@ -87,10 +88,10 @@
+      if 2*diff_exp > Nx (see above as if Nz = Nx), therefore on Nz bits.
+      Hence the condition: 2*diff_exp > MAX(Nz,Nx).
+   */
+-  if (diff_exp > MAX (Nz, MPFR_PREC (x)) / 2)
++  if (diff_exp > MAX (Nz, Nx) / 2)
+     /* result is |x| or |x|+ulp(|x|,Nz) */
+     {
+-      if (rnd_mode == GMP_RNDU)
++      if (MPFR_UNLIKELY (rnd_mode == GMP_RNDU))
+         {
+           /* If z > abs(x), then it was already rounded up; otherwise
+              z = abs(x), and we need to add one ulp due to y. */
+@@ -100,14 +101,27 @@
+         }
+       else /* GMP_RNDZ, GMP_RNDD, GMP_RNDN */
+         {
+-          inexact = mpfr_abs (z, x, rnd_mode);
+-          return (inexact) ? inexact : -1;
++          if (MPFR_LIKELY (Nz >= Nx))
++            {
++              mpfr_abs (z, x, rnd_mode);  /* exact */
++              return -1;
++            }
++          else
++            {
++              MPFR_SET_EXP (z, Ex);
++              MPFR_SET_SIGN (z, 1);
++              MPFR_RNDRAW_GEN (inexact, z, MPFR_MANT (x), Nx, rnd_mode, 1,
++                               goto addoneulp,
++                  if (MPFR_UNLIKELY (++MPFR_EXP (z) > __gmpfr_emax))
++                    return mpfr_overflow (z, rnd_mode, 1);
++                              );
++              return inexact ? inexact : -1;
++            }
+         }
+     }
+ 
+   /* General case */
+ 
+-  Nx = MPFR_PREC(x);   /* Precision of input variable */
+   Ny = MPFR_PREC(y);   /* Precision of input variable */
+ 
+   /* compute the working precision -- see algorithms.ps */
+diff -Naurd mpfr-2.2.0-p4/mpfr-impl.h mpfr-2.2.0-p5/mpfr-impl.h
+--- mpfr-2.2.0-p4/mpfr-impl.h	2005-09-11 22:13:24.000000000 +0000
++++ mpfr-2.2.0-p5/mpfr-impl.h	2005-11-23 09:04:29.000000000 +0000
+@@ -184,6 +184,14 @@
+ # define MPFR_THREAD_ATTR
+ #endif
+ 
++/* Cache struct */
++struct __gmpfr_cache_s {
++  mpfr_t x;
++  int inexact;
++  int (*func)(mpfr_ptr, mpfr_rnd_t);
++};
++typedef struct __gmpfr_cache_s mpfr_cache_t[1];
++
+ #if defined (__cplusplus)
+ extern "C" {
+ #endif
+@@ -924,113 +932,19 @@
+  ******************************************************/
+ 
+ /*
+- * Round Mantissa (`srcp`, `sprec`) to mpfr_t `dest` using rounding mode `rnd`
+- * assuming dest's sign is `sign`.
+- * Execute OVERFLOW_HANDLER in case of overflow when rounding (Power 2 case)
++ * Note: due to the labels, one cannot use a macro MPFR_RNDRAW* more than
++ * once in a function (otherwise these labels would not be unique).
+  */
+-#define MPFR_RNDRAW(inexact, dest, srcp, sprec, rnd, sign, OVERFLOW_HANDLER)\
+-  do {                                                                      \
+-    mp_size_t dests, srcs;                                                  \
+-    mp_limb_t *destp;                                                       \
+-    mp_prec_t destprec, srcprec;                                            \
+-                                                                            \
+-    /* Check Trivial Case when Dest Mantissa has more bits than source */   \
+-    srcprec = sprec;                                                        \
+-    destprec = MPFR_PREC (dest);                                            \
+-    destp = MPFR_MANT (dest);                                               \
+-    if (MPFR_UNLIKELY (destprec >= srcprec))                                \
+-      {                                                                     \
+-        srcs  = (srcprec  + BITS_PER_MP_LIMB-1)/BITS_PER_MP_LIMB;           \
+-        dests = (destprec + BITS_PER_MP_LIMB-1)/BITS_PER_MP_LIMB - srcs;    \
+-        MPN_COPY (destp + dests, srcp, srcs);                               \
+-        MPN_ZERO (destp, dests);                                            \
+-        inexact = 0;                                                        \
+-      }                                                                     \
+-    else                                                                    \
+-      {                                                                     \
+-        /* Non trivial case: rounding needed */                             \
+-        mp_prec_t sh;                                                       \
+-        mp_limb_t *sp;                                                      \
+-        mp_limb_t rb, sb, ulp;                                              \
+-                                                                            \
+-        /* Compute Position and shift */                                    \
+-        srcs  = (srcprec  + BITS_PER_MP_LIMB-1)/BITS_PER_MP_LIMB;           \
+-        dests = (destprec + BITS_PER_MP_LIMB-1)/BITS_PER_MP_LIMB;           \
+-        MPFR_UNSIGNED_MINUS_MODULO (sh, destprec);                          \
+-        sp = srcp + srcs - dests;                                           \
+-                                                                            \
+-        /* General case when prec % BITS_PER_MP_LIMB != 0 */                \
+-        if (MPFR_LIKELY (sh != 0))                                          \
+-          {                                                                 \
+-            mp_limb_t mask;                                                 \
+-            /* Compute Rounding Bit and Sticky Bit */                       \
+-            mask = MPFR_LIMB_ONE << (sh-1);                                 \
+-            rb = sp[0] & mask;                                              \
+-            sb = sp[0] & (mask-1);                                          \
+-            if (MPFR_UNLIKELY (sb == 0))                                    \
+-              { /* TODO: Improve it */                                      \
+-                mp_limb_t *tmp;                                             \
+-                mp_size_t n;                                                \
+-                for (tmp = sp, n = srcs - dests ; n != 0 && sb == 0 ; n--)  \
+-                  sb = *--tmp;                                              \
+-              }                                                             \
+-            ulp = 2*mask;                                                   \
+-          }                                                                 \
+-        else /* sh == 0 */                                                  \
+-          {                                                                 \
+-            MPFR_ASSERTD (dests < srcs);                                    \
+-            /* Compute Rounding Bit and Sticky Bit */                       \
+-            rb = sp[-1] & MPFR_LIMB_HIGHBIT;                                \
+-            sb = sp[-1] & (MPFR_LIMB_HIGHBIT-1);                            \
+-            if (MPFR_UNLIKELY (sb == 0))                                    \
+-              {                                                             \
+-                mp_limb_t *tmp;                                             \
+-                mp_size_t n;                                                \
+-                for (tmp = sp-1, n = srcs - dests-1 ; n!=0 && sb==0 ; n--)  \
+-                  sb = *--tmp;                                              \
+-              }                                                             \
+-            ulp = MPFR_LIMB_ONE;                                            \
+-          }                                                                 \
+-        /* Rounding */                                                      \
+-        if (MPFR_LIKELY (rnd == GMP_RNDN))                                  \
+-          {                                                                 \
+-            if (rb == 0 || MPFR_UNLIKELY (sb == 0 && (sp[0] & ulp) == 0))   \
+-              {                                                             \
+-              trunc:                                                        \
+-                inexact = MPFR_LIKELY ((sb | rb) != 0) ? -sign : 0;         \
+-                MPN_COPY (destp, sp, dests);                                \
+-                destp[0] &= ~(ulp-1);                                       \
+-              }                                                             \
+-            else                                                            \
+-              {                                                             \
+-              addoneulp:                                                    \
+-                if (MPFR_UNLIKELY (mpn_add_1 (destp, sp, dests, ulp)))      \
+-                  {                                                         \
+-                    destp[dests-1] = MPFR_LIMB_HIGHBIT;                     \
+-                    OVERFLOW_HANDLER;                                       \
+-                  }                                                         \
+-                destp[0] &= ~(ulp-1);                                       \
+-                inexact = sign;                                             \
+-              }                                                             \
+-          }                                                                 \
+-        else                                                                \
+-          { /* Not Rounding to Nearest */                                   \
+-            if (MPFR_LIKELY (MPFR_IS_LIKE_RNDZ (rnd, MPFR_IS_NEG_SIGN (sign)))\
+-                || MPFR_UNLIKELY ((sb | rb) == 0))                          \
+-              goto trunc;                                                   \
+-             else                                                           \
+-              goto addoneulp;                                               \
+-          }                                                                 \
+-      }                                                                     \
+-  } while (0)
+ 
+ /*
+- * Round Mantissa (`srcp`, `sprec`) to mpfr_t `dest` using rounding mode `rnd`
+- * assuming dest's sign is `sign`.
+- * Execute OVERFLOW_HANDLER in case of overflow when rounding (Power 2 case)
+- * Return MPFR_EVEN_INEX in case of EVEN rounding
++ * Round mantissa (srcp, sprec) to mpfr_t dest using rounding mode rnd
++ * assuming dest's sign is sign.
++ * In rounding to nearest mode, execute MIDDLE_HANDLER when the value
++ * is the middle of two consecutive numbers in dest precision.
++ * Execute OVERFLOW_HANDLER in case of overflow when rounding.
+  */
+-#define MPFR_RNDRAW_EVEN(inexact, dest, srcp, sprec, rnd, sign, OVERFLOW_HANDLER)\
++#define MPFR_RNDRAW_GEN(inexact, dest, srcp, sprec, rnd, sign,              \
++                        MIDDLE_HANDLER, OVERFLOW_HANDLER)                   \
+   do {                                                                      \
+     mp_size_t dests, srcs;                                                  \
+     mp_limb_t *destp;                                                       \
+@@ -1105,19 +1019,8 @@
+                 destp[0] &= ~(ulp-1);                                       \
+               }                                                             \
+             else if (MPFR_UNLIKELY (sb == 0))                               \
+-              {                                                             \
+-                /* EVEN rounding */                                         \
+-                if ((sp[0] & ulp) == 0)                                     \
+-                 {                                                          \
+-                  MPFR_ASSERTD (rb != 0);                                   \
+-                  inexact = -MPFR_EVEN_INEX*sign;                           \
+-                  goto trunc_doit;                                          \
+-                 }                                                          \
+-                else                                                        \
+-                 {                                                          \
+-                  inexact = MPFR_EVEN_INEX*sign;                            \
+-                  goto addoneulp_doit;                                      \
+-                 }                                                          \
++              { /* Middle of two consecutive representable numbers */       \
++                MIDDLE_HANDLER;                                             \
+               }                                                             \
+             else                                                            \
+               {                                                             \
+@@ -1133,16 +1036,58 @@
+               }                                                             \
+           }                                                                 \
+         else                                                                \
+-          { /* Not Rounding to Nearest */                                   \
+-            if (MPFR_LIKELY (MPFR_IS_LIKE_RNDZ (rnd, MPFR_IS_NEG_SIGN (sign)))\
+-                || MPFR_UNLIKELY ((sb | rb) == 0))                          \
++          { /* Directed rounding mode */                                    \
++            if (MPFR_LIKELY (MPFR_IS_LIKE_RNDZ (rnd,                        \
++                                                MPFR_IS_NEG_SIGN (sign))))  \
+               goto trunc;                                                   \
++             else if (MPFR_UNLIKELY ((sb | rb) == 0))                       \
++               {                                                            \
++                 inexact = 0;                                               \
++                 goto trunc_doit;                                           \
++               }                                                            \
+              else                                                           \
+               goto addoneulp;                                               \
+           }                                                                 \
+       }                                                                     \
+   } while (0)
+ 
++/*
++ * Round mantissa (srcp, sprec) to mpfr_t dest using rounding mode rnd
++ * assuming dest's sign is sign.
++ * Execute OVERFLOW_HANDLER in case of overflow when rounding.
++ */
++#define MPFR_RNDRAW(inexact, dest, srcp, sprec, rnd, sign, OVERFLOW_HANDLER) \
++   MPFR_RNDRAW_GEN (inexact, dest, srcp, sprec, rnd, sign,                   \
++     if ((sp[0] & ulp) == 0)                                                 \
++       {                                                                     \
++         inexact = -sign;                                                    \
++         goto trunc_doit;                                                    \
++       }                                                                     \
++     else                                                                    \
++       goto addoneulp;                                                       \
++     , OVERFLOW_HANDLER)
++
++/*
++ * Round mantissa (srcp, sprec) to mpfr_t dest using rounding mode rnd
++ * assuming dest's sign is sign.
++ * Execute OVERFLOW_HANDLER in case of overflow when rounding.
++ * Set inexact to +/- MPFR_EVEN_INEX in case of even rounding.
++ */
++#define MPFR_RNDRAW_EVEN(inexact, dest, srcp, sprec, rnd, sign, \
++                         OVERFLOW_HANDLER)                      \
++   MPFR_RNDRAW_GEN (inexact, dest, srcp, sprec, rnd, sign,      \
++     if ((sp[0] & ulp) == 0)                                    \
++       {                                                        \
++         inexact = -MPFR_EVEN_INEX * sign;                      \
++         goto trunc_doit;                                       \
++       }                                                        \
++     else                                                       \
++       {                                                        \
++         inexact = MPFR_EVEN_INEX * sign;                       \
++         goto addoneulp_doit;                                   \
++       }                                                        \
++     , OVERFLOW_HANDLER)
++
+ /* Return TRUE if b is non singular and we can round it to precision 'prec'
+    with rounding mode 'rnd', and with error at most 'error' */
+ #define MPFR_CAN_ROUND(b,err,prec,rnd)                                       \
+@@ -1498,6 +1443,13 @@
+ __MPFR_DECLSPEC int mpfr_const_log2_internal _MPFR_PROTO((mpfr_ptr,mp_rnd_t));
+ __MPFR_DECLSPEC int mpfr_const_euler_internal _MPFR_PROTO((mpfr_ptr, mp_rnd_t));
+ __MPFR_DECLSPEC int mpfr_const_catalan_internal _MPFR_PROTO((mpfr_ptr, mp_rnd_t));
++
++__MPFR_DECLSPEC void mpfr_init_cache _MPFR_PROTO ((mpfr_cache_t,
++                                           int(*)(mpfr_ptr,mpfr_rnd_t)));
++__MPFR_DECLSPEC void mpfr_clear_cache _MPFR_PROTO ((mpfr_cache_t));
++__MPFR_DECLSPEC int  mpfr_cache _MPFR_PROTO ((mpfr_ptr, mpfr_cache_t,
++                                              mpfr_rnd_t));
++
+ __MPFR_DECLSPEC void mpfr_mulhigh_n _MPFR_PROTO ((mp_ptr, mp_srcptr,
+                                                   mp_srcptr, mp_size_t));
+ 
+diff -Naurd mpfr-2.2.0-p4/mpfr.h mpfr-2.2.0-p5/mpfr.h
+--- mpfr-2.2.0-p4/mpfr.h	2005-09-29 11:36:36.000000000 +0000
++++ mpfr-2.2.0-p5/mpfr.h	2005-11-23 09:04:29.000000000 +0000
+@@ -118,14 +118,6 @@
+ /* For those who needs a direct access and fast access to the sign field */
+ #define MPFR_SIGN(x) ((x)->_mpfr_sign)
+ 
+-/* Cache struct */
+-struct __gmpfr_cache_s {
+-  mpfr_t x;
+-  int inexact;
+-  int (*func)(mpfr_ptr, mpfr_rnd_t);
+-};
+-typedef struct __gmpfr_cache_s mpfr_cache_t[1];
+-
+ /* Stack interface */
+ typedef enum {
+   MPFR_NAN_KIND = 0,
+@@ -544,11 +536,6 @@
+ __MPFR_DECLSPEC int mpfr_sum _MPFR_PROTO ((mpfr_ptr, mpfr_ptr *__gmp_const,
+                                            unsigned long, mpfr_rnd_t));
+ 
+-__MPFR_DECLSPEC void mpfr_init_cache _MPFR_PROTO ((mpfr_cache_t,
+-                                           int(*)(mpfr_ptr,mpfr_rnd_t)));
+-__MPFR_DECLSPEC void mpfr_clear_cache _MPFR_PROTO ((mpfr_cache_t));
+-__MPFR_DECLSPEC int  mpfr_cache _MPFR_PROTO ((mpfr_ptr, mpfr_cache_t,
+-                                              mpfr_rnd_t));
+ __MPFR_DECLSPEC void mpfr_free_cache _MPFR_PROTO ((void));
+ 
+ __MPFR_DECLSPEC int  mpfr_subnormalize _MPFR_PROTO ((mpfr_ptr, int,
+diff -Naurd mpfr-2.2.0-p4/round_near_x.c mpfr-2.2.0-p5/round_near_x.c
+--- mpfr-2.2.0-p4/round_near_x.c	2005-08-18 16:35:12.000000000 +0000
++++ mpfr-2.2.0-p5/round_near_x.c	2005-11-23 09:04:29.000000000 +0000
+@@ -21,13 +21,13 @@
+ 
+ #include "mpfr-impl.h"
+ 
+-/* Uses MPFR_FAST_COMPUTE_IF_SMALL_INPUT instead (a simple wrapper) */
++/* Use MPFR_FAST_COMPUTE_IF_SMALL_INPUT instead (a simple wrapper) */
+ 
+ /* int mpfr_round_near_x (mpfr_ptr y, mpfr_srcptr x, mp_exp_t err, int dir,
+                           mp_rnd_t rnd)
+ 
+    Assuming y = o(f(x)) = o(x + g(x)) with |g(x)| < 2^(EXP(x)-error)
+-   If x is small enought, y ~= x. This function checks and does this.
++   If x is small enough, y ~= x. This function checks and does this.
+ 
+    It assumes that f(x) is not representable exactly as a FP number.
+    x must not be a singular value (NAN, INF or ZERO).
+@@ -42,7 +42,7 @@
+    Otherwise it returns the ternary flag (It can't return an exact value).
+ */
+ 
+-/* What "small enought" means?
++/* What "small enough" means?
+ 
+    We work with the positive values.
+    Assuming err > Prec (y)+1
+@@ -50,7 +50,7 @@
+    i = [ y = o(x)]   // i = inexact flag
+    If i == 0
+        Setting x in y is exact. We have:
+-       y = [XXXXXXXXX[...]]0[...] + error where [..] are optionnal zeros
++       y = [XXXXXXXXX[...]]0[...] + error where [..] are optional zeros
+       if dirError = ToInf,
+         x < f(x) < x + 2^(EXP(x)-err)
+         since x=y, and ulp (y)/2 > 2^(EXP(x)-err), we have:
+@@ -172,9 +172,17 @@
+   sign = MPFR_SIGN (x);
+   MPFR_SET_EXP (y, MPFR_GET_EXP (x));
+   MPFR_SET_SIGN (y, sign);
+-  MPFR_RNDRAW_EVEN (inexact, y, MPFR_MANT (x), MPFR_PREC (x), rnd, sign,
+-                    if (MPFR_UNLIKELY ( ++MPFR_EXP (y) > __gmpfr_emax))
+-                    mpfr_overflow (y, rnd, sign) );
++  MPFR_RNDRAW_GEN (inexact, y, MPFR_MANT (x), MPFR_PREC (x), rnd, sign,
++                   if (dir == 0)
++                     {
++                       inexact = -sign;
++                       goto trunc_doit;
++                     }
++                   else
++                     goto addoneulp;
++                   , if (MPFR_UNLIKELY (++MPFR_EXP (y) > __gmpfr_emax))
++                       mpfr_overflow (y, rnd, sign)
++                  );
+ 
+   /* Fix it in some cases */
+   MPFR_ASSERTD (!MPFR_IS_NAN (y) && !MPFR_IS_ZERO (y));
+@@ -212,15 +220,6 @@
+             }
+         }
+     }
+-  /* The even rule has been used. But due to error term, we should never
+-     use this rule. That's why we have to fix some wrong rounding */
+-  else if (inexact == MPFR_EVEN_INEX || inexact == -MPFR_EVEN_INEX)
+-    {
+-      if (inexact*sign > 0 && dir == 0)
+-        goto nexttozero;
+-      else if (inexact*sign < 0 && dir == 1)
+-        goto nexttoinf;
+-    }
+ 
+   MPFR_RET (inexact);
+ }
+diff -Naurd mpfr-2.2.0-p4/tests/thypot.c mpfr-2.2.0-p5/tests/thypot.c
+--- mpfr-2.2.0-p4/tests/thypot.c	2005-06-02 16:12:04.000000000 +0000
++++ mpfr-2.2.0-p5/tests/thypot.c	2005-11-23 09:04:29.000000000 +0000
+@@ -131,7 +131,26 @@
+   inexact = mpfr_hypot (z, x, y, GMP_RNDN);
+   if (inexact >= 0 || mpfr_cmp (x, z))
+     {
+-      printf ("Error in test_large_small\n");
++      printf ("Error 1 in test_large_small\n");
++      exit (1);
++    }
++
++  mpfr_mul_ui (x, x, 5, GMP_RNDN);
++  inexact = mpfr_hypot (z, x, y, GMP_RNDN);
++  if (mpfr_cmp (x, z) >= 0)
++    {
++      printf ("Error 2 in test_large_small\n");
++      printf ("x = ");
++      mpfr_out_str (stdout, 2, 0, x, GMP_RNDN);
++      printf ("\n");
++      printf ("y = ");
++      mpfr_out_str (stdout, 2, 0, y, GMP_RNDN);
++      printf ("\n");
++      printf ("z = ");
++      mpfr_out_str (stdout, 2, 0, z, GMP_RNDN);
++      printf (" (in precision 2) instead of\n    ");
++      mpfr_out_str (stdout, 2, 2, x, GMP_RNDU);
++      printf ("\n");
+       exit (1);
+     }
+ 
+diff -Naurd mpfr-2.2.0-p5/div.c mpfr-2.2.0-p6/div.c
+--- mpfr-2.2.0-p5/div.c	2005-08-18 17:03:05.000000000 +0000
++++ mpfr-2.2.0-p6/div.c	2005-11-24 21:39:31.000000000 +0000
+@@ -298,17 +298,16 @@
+           MPN_COPY(bp, vp, vsize);
+         }
+       sticky_v = sticky_v || mpn_cmpzero (vp, k);
++      k = 0;
+     }
+-  else /* vsize < qsize */
++  else /* vsize < qsize: small divisor case */
+     {
++      bp = vp;
+       k = qsize - vsize;
+-      bp = (mp_ptr) MPFR_TMP_ALLOC (qsize * sizeof(mp_limb_t));
+-      MPN_COPY(bp + k, vp, vsize);
+-      MPN_ZERO(bp, k);
+     }
+ 
+   /* we now can perform the division */
+-  qh = mpn_divrem (qp, 0, ap, qqsize, bp, qsize);
++  qh = mpn_divrem (qp, 0, ap + k, qqsize - k, bp, qsize - k);
+   /* warning: qh may be 1 if u1 == v1, but u < v */
+ #ifdef DEBUG
+   printf ("q="); mpn_print (qp, qsize);
+diff -Naurd mpfr-2.2.0-p6/sin.c mpfr-2.2.0-p7/sin.c
+--- mpfr-2.2.0-p6/sin.c	2005-08-18 17:03:11.000000000 +0000
++++ mpfr-2.2.0-p7/sin.c	2005-12-24 15:17:54.000000000 +0000
+@@ -162,10 +162,12 @@
+         {
+           /* the absolute error on c is at most 2^(3-m-EXP(c)) */
+           e = 2 * MPFR_GET_EXP (c) + m - 3;
+-          if (mpfr_can_round (c, e, GMP_RNDZ, GMP_RNDZ,
++          if (mpfr_can_round (c, e, GMP_RNDN, GMP_RNDZ,
+                               precy + (rnd_mode == GMP_RNDN)))
+-            /* WARNING: need one more bit for rounding to nearest,
+-               to be able to get the inexact flag correct */
++            /* WARNING: even if we know c <= sin(x), don't give GMP_RNDZ
++               as 3rd argument to mpfr_can_round, since if c is exactly
++               representable to the target precision (inexact = 0 below),
++               we would have to add one ulp when rounding away from 0. */
+             break;
+ 
+           /* check for huge cancellation (Near 0) */
+@@ -183,14 +185,8 @@
+   MPFR_ZIV_FREE (loop);
+ 
+   inexact = mpfr_set (y, c, rnd_mode);
+-
+-  /* sin(x) is exact only for x = 0, which was treated apart above;
+-     nevertheless, we can have inexact = 0 here if the approximation c
+-     is exactly representable with PREC(y) bits. Since c is an approximation
+-     towards zero, in that case the inexact flag should have the opposite sign
+-     as y. */
+-  if (MPFR_UNLIKELY (inexact == 0))
+-    inexact = -MPFR_INT_SIGN (y);
++  /* inexact cannot be 0, since this would mean that c was representable
++     within the target precision, but in that case mpfr_can_round will fail */
+ 
+   mpfr_clear (c);
+ 
+diff -Naurd mpfr-2.2.0-p7/get_f.c mpfr-2.2.0-p8/get_f.c
+--- mpfr-2.2.0-p7/get_f.c	2005-06-08 09:53:48.000000000 +0000
++++ mpfr-2.2.0-p8/get_f.c	2006-01-13 15:04:34.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* mpfr_get_f -- convert a MPFR number to a GNU MPF number
+ 
+-Copyright 2005 Free Software Foundation, Inc.
++Copyright 2005, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -27,8 +27,9 @@
+ int
+ mpfr_get_f (mpf_ptr x, mpfr_srcptr y, mp_rnd_t rnd_mode)
+ {
+-  unsigned long sx, sy, precx, precy, sh;
+-  mp_exp_t ey;
++  mp_size_t sx, sy;
++  mp_prec_t precx, precy;
++  int sh;
+ 
+   if (MPFR_UNLIKELY(MPFR_IS_SINGULAR(y)))
+     {
+@@ -44,20 +45,18 @@
+   sx = PREC(x); /* number of limbs of the mantissa of x */
+ 
+   precy = MPFR_PREC(y);
+-  precx = sx * BITS_PER_MP_LIMB;
+-  sy = 1 + (MPFR_PREC(y) - 1) / BITS_PER_MP_LIMB;
++  precx = (mp_prec_t) sx * BITS_PER_MP_LIMB;
++  sy = MPFR_LIMB_SIZE (y);
+ 
+   /* since mpf numbers are represented in base 2^BITS_PER_MP_LIMB,
+      we loose -EXP(y) % BITS_PER_MP_LIMB bits in the most significant limb */
+-  ey = MPFR_GET_EXP(y) % BITS_PER_MP_LIMB;
+-  if (ey <= 0)
+-    sh = (unsigned long) (-ey);
+-  else /* 0 < ey < BITS_PER_MP_LIMB */
+-    sh = BITS_PER_MP_LIMB - (unsigned long) ey;
++  sh = MPFR_GET_EXP(y) % BITS_PER_MP_LIMB;
++  sh = sh <= 0 ? - sh : BITS_PER_MP_LIMB - sh;
++  MPFR_ASSERTD (sh >= 0);
+   if (precy + sh <= precx) /* we can copy directly */
+     {
+-      /* necessarily sy <= sx */
+-      if (sh)
++      MPFR_ASSERTN (sx >= sy);
++      if (sh != 0)
+         mpn_rshift (PTR(x) + sx - sy, MPFR_MANT(y), sy, sh);
+       else
+         MPN_COPY (PTR(x) + sx - sy, MPFR_MANT(y), sy);
+@@ -68,17 +67,17 @@
+   else /* we have to round to precx - sh bits */
+     {
+       mpfr_t z;
+-      unsigned long sz;
++      mp_size_t sz;
+ 
+       mpfr_init2 (z, precx - sh);
+-      sz = 1 + (MPFR_PREC(z) - 1) / BITS_PER_MP_LIMB;
++      sz = MPFR_LIMB_SIZE (z);
+       mpfr_set (z, y, rnd_mode);
+       /* warning, sh may change due to rounding, but then z is a power of two,
+          thus we can safely ignore its last bit which is 0 */
+-      ey = MPFR_GET_EXP(z) % BITS_PER_MP_LIMB;
+-      sh = (ey <= 0) ? (unsigned long) (-ey)
+-        : BITS_PER_MP_LIMB - (unsigned long) ey;
+-      if (sh)
++      sh = MPFR_GET_EXP(z) % BITS_PER_MP_LIMB;
++      sh = sh <= 0 ? - sh : BITS_PER_MP_LIMB - sh;
++      MPFR_ASSERTD (sh >= 0);
++      if (sh != 0)
+         mpn_rshift (PTR(x) + sx - sz, MPFR_MANT(z), sz, sh);
+       else
+         MPN_COPY (PTR(x) + sx - sz, MPFR_MANT(z), sz);
+diff -Naurd mpfr-2.2.0-p7/set_f.c mpfr-2.2.0-p8/set_f.c
+--- mpfr-2.2.0-p7/set_f.c	2005-08-18 16:35:13.000000000 +0000
++++ mpfr-2.2.0-p8/set_f.c	2006-01-12 10:34:40.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* mpfr_set_f -- set a MPFR number from a GNU MPF number
+ 
+-Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
++Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -80,7 +80,22 @@
+       inexact = 0;
+     }
+ 
+-  MPFR_SET_EXP(y, EXP(x) * BITS_PER_MP_LIMB - cnt + carry);
++  /* warning: EXP(x) * BITS_PER_MP_LIMB may exceed the maximal exponent */
++  if (EXP(x) > 1 + (__gmpfr_emax - 1) / BITS_PER_MP_LIMB)
++    {
++      /* EXP(x) >= 2 + floor((__gmpfr_emax-1)/BITS_PER_MP_LIMB)
++         EXP(x) >= 2 + (__gmpfr_emax - BITS_PER_MP_LIMB) / BITS_PER_MP_LIMB
++                >= 1 + __gmpfr_emax / BITS_PER_MP_LIMB
++         EXP(x) * BITS_PER_MP_LIMB >= __gmpfr_emax + BITS_PER_MP_LIMB
++         Since 0 <= cnt <= BITS_PER_MP_LIMB-1, and 0 <= carry <= 1,
++         we have then EXP(x) * BITS_PER_MP_LIMB - cnt + carry > __gmpfr_emax */
++      return mpfr_overflow (y, rnd_mode, MPFR_SIGN (y));
++    }
++  else
++    {
++      /* Do not use MPFR_SET_EXP as the exponent may be out of range. */
++      MPFR_EXP (y) = EXP (x) * BITS_PER_MP_LIMB - (mp_exp_t) cnt + carry;
++    }
+ 
+-  return inexact;
++  return mpfr_check_range (y, inexact, rnd_mode);
+ }
+diff -Naurd mpfr-2.2.0-p7/tests/tget_f.c mpfr-2.2.0-p8/tests/tget_f.c
+--- mpfr-2.2.0-p7/tests/tget_f.c	2005-06-02 16:12:04.000000000 +0000
++++ mpfr-2.2.0-p8/tests/tget_f.c	2006-01-13 15:05:14.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* Test file for mpfr_get_f.
+ 
+-Copyright 2005 Free Software Foundation, Inc.
++Copyright 2005, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -22,6 +22,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <time.h>
++#include <limits.h>
+ 
+ #include "mpfr-test.h"
+ 
+@@ -31,6 +32,7 @@
+   mpf_t x;
+   mpfr_t y;
+   unsigned long i;
++  mp_exp_t e;
+ 
+   MPFR_TEST_USE_RANDS ();
+   tests_start_mpfr ();
+@@ -83,11 +85,14 @@
+           printf ("Error: mpfr_get_f(%lu) fails\n", i);
+           exit (1);
+         }
+-      mpfr_set_si (y, (signed long) -i, GMP_RNDN);
+-      if (mpfr_get_f (x, y, GMP_RNDN) || mpf_cmp_si (x, (signed long) -i))
++      if (i <= - (unsigned long) LONG_MIN)
+         {
+-          printf ("Error: mpfr_get_f(-%lu) fails\n", i);
+-          exit (1);
++          mpfr_set_si (y, - (long) i, GMP_RNDN);
++          if (mpfr_get_f (x, y, GMP_RNDN) || mpf_cmp_si (x, - (long) i))
++            {
++              printf ("Error: mpfr_get_f(-%lu) fails\n", i);
++              exit (1);
++            }
+         }
+       i *= 2;
+     }
+@@ -113,6 +118,42 @@
+       i *= 2;
+     }
+ 
++  /* bug reported by Jim White */
++  for (e = 0; e <= 2 * BITS_PER_MP_LIMB; e++)
++    {
++      /* test with 2^(-e) */
++      mpfr_set_ui (y, 1, GMP_RNDN);
++      mpfr_div_2exp (y, y, e, GMP_RNDN);
++      mpfr_get_f (x, y, GMP_RNDN);
++      mpf_mul_2exp (x, x, e);
++      if (mpf_cmp_ui (x, 1) != 0)
++        {
++          printf ("Error: mpfr_get_f(x,y,GMP_RNDN) fails\n");
++          printf ("y=");
++          mpfr_dump (y);
++          printf ("x=");
++          mpf_div_2exp (x, x, e);
++          mpf_dump (x);
++          exit (1);
++        }
++
++      /* test with 2^(e) */
++      mpfr_set_ui (y, 1, GMP_RNDN);
++      mpfr_mul_2exp (y, y, e, GMP_RNDN);
++      mpfr_get_f (x, y, GMP_RNDN);
++      mpf_div_2exp (x, x, e);
++      if (mpf_cmp_ui (x, 1) != 0)
++        {
++          printf ("Error: mpfr_get_f(x,y,GMP_RNDN) fails\n");
++          printf ("y=");
++          mpfr_dump (y);
++          printf ("x=");
++          mpf_mul_2exp (x, x, e);
++          mpf_dump (x);
++          exit (1);
++        }
++    }
++
+   mpfr_clear (y);
+   mpf_clear (x);
+ 
+diff -Naurd mpfr-2.2.0-p7/tests/tset_f.c mpfr-2.2.0-p8/tests/tset_f.c
+--- mpfr-2.2.0-p7/tests/tset_f.c	2005-09-09 15:18:00.000000000 +0000
++++ mpfr-2.2.0-p8/tests/tset_f.c	2006-01-12 10:31:42.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* Test file for mpfr_set_f.
+ 
+-Copyright 1999, 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
++Copyright 1999, 2001, 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -22,6 +22,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <time.h>
++#include <limits.h> /* for ULONG_MAX */
+ 
+ #include "mpfr-test.h"
+ 
+@@ -30,6 +31,7 @@
+ {
+   mpfr_t x, u;
+   mpf_t y, z;
++  mp_exp_t emax;
+   unsigned long k, pr;
+   int r, inexact;
+ 
+@@ -87,8 +89,6 @@
+     }
+   MPFR_ASSERTN(mpfr_cmp_ui_2exp (x, 1, 901) == 0);
+ 
+-  mpfr_clear (u);
+-
+   for (k = 1; k <= 100000; k++)
+     {
+       pr = 2 + (randlimb () & 255);
+@@ -131,7 +131,49 @@
+       mpf_mul_2exp (y, y, 1);
+     }
+ 
++  mpf_set_ui (y, 1);
++  mpf_mul_2exp (y, y, ULONG_MAX);
++  mpfr_set_f (x, y, GMP_RNDN);
++  mpfr_set_ui (u, 1, GMP_RNDN);
++  mpfr_mul_2ui (u, u, ULONG_MAX, GMP_RNDN);
++  if (!mpfr_equal_p (x, u))
++    {
++      printf ("Error: mpfr_set_f (x, y, GMP_RNDN) for y = 2^ULONG_MAX\n");
++      exit (1);
++    }
++
++  emax = mpfr_get_emax ();
++
++  /* For mpf_mul_2exp, emax must fit in an unsigned long! */
++  if (emax >= 0 && emax <= ULONG_MAX)
++    {
++      mpf_set_ui (y, 1);
++      mpf_mul_2exp (y, y, emax);
++      mpfr_set_f (x, y, GMP_RNDN);
++      mpfr_set_ui_2exp (u, 1, emax, GMP_RNDN);
++      if (!mpfr_equal_p (x, u))
++        {
++          printf ("Error: mpfr_set_f (x, y, GMP_RNDN) for y = 2^emax\n");
++          exit (1);
++        }
++    }
++
++  /* For mpf_mul_2exp, emax - 1 must fit in an unsigned long! */
++  if (emax >= 1 && emax - 1 <= ULONG_MAX)
++    {
++      mpf_set_ui (y, 1);
++      mpf_mul_2exp (y, y, emax - 1);
++      mpfr_set_f (x, y, GMP_RNDN);
++      mpfr_set_ui_2exp (u, 1, emax - 1, GMP_RNDN);
++      if (!mpfr_equal_p (x, u))
++        {
++          printf ("Error: mpfr_set_f (x, y, GMP_RNDN) for y = 2^(emax-1)\n");
++          exit (1);
++        }
++    }
++
+   mpfr_clear (x);
++  mpfr_clear (u);
+   mpf_clear (y);
+   mpf_clear (z);
+ 
+diff -Naurd mpfr-2.2.0-p8/random2.c mpfr-2.2.0-p9/random2.c
+--- mpfr-2.2.0-p8/random2.c	2005-08-18 17:03:10.000000000 +0000
++++ mpfr-2.2.0-p9/random2.c	2006-02-20 10:29:01.000000000 +0000
+@@ -2,7 +2,7 @@
+    long runs of consecutive ones and zeros in the binary representation.
+    Intended for testing.
+ 
+-Copyright 1999, 2001, 2002, 2003, 2004 Free Software Foundation, Inc.
++Copyright 1999, 2001, 2002, 2003, 2004, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -36,7 +36,8 @@
+ 
+   if (MPFR_UNLIKELY(size == 0))
+     {
+-      MPFR_SET_ZERO(x);
++      MPFR_SET_ZERO (x);
++      MPFR_SET_POS (x);
+       return ;
+     }
+   else if (size > 0)
+diff -Naurd mpfr-2.2.0-p8/tests/trandom.c mpfr-2.2.0-p9/tests/trandom.c
+--- mpfr-2.2.0-p8/tests/trandom.c	2005-08-18 17:03:16.000000000 +0000
++++ mpfr-2.2.0-p9/tests/trandom.c	2006-02-20 10:29:01.000000000 +0000
+@@ -1,6 +1,6 @@
+ /* Test file for the various mpfr_random fonctions.
+ 
+-Copyright 1999, 2000, 2001, 2002, 2003, 2004 Free Software Foundation.
++Copyright 1999, 2000, 2001, 2002, 2003, 2004, 2006 Free Software Foundation, Inc.
+ 
+ This file is part of the MPFR Library.
+ 
+@@ -120,7 +120,10 @@
+ 
+   /* test size=0 */
+   mpfr_random2 (x, 0, 0);
+-  MPFR_ASSERTN(mpfr_cmp_ui (x, 0) == 0 && MPFR_IS_POS(x));
++  MPFR_ASSERTN (mpfr_cmp_ui (x, 0) == 0 && MPFR_IS_POS (x));
++  mpfr_set_si (x, -1, GMP_RNDN); /* x is negative */
++  mpfr_random2 (x, 0, 0);
++  MPFR_ASSERTN (mpfr_cmp_ui (x, 0) == 0 && MPFR_IS_POS (x));
+ 
+   /* test size < 0 */
+   mpfr_random2 (x, -1, 0);
+diff -Naurd mpfr-2.2.0-p9/asin.c mpfr-2.2.0-p10/asin.c
+--- mpfr-2.2.0-p9/asin.c	2005-08-18 17:03:04.000000000 +0000
++++ mpfr-2.2.0-p10/asin.c	2006-03-16 17:47:51.000000000 +0000
+@@ -51,7 +51,7 @@
+     }
+ 
+   /* asin(x) = x + x^3/6 + ... so the error is < 2^(3*EXP(x)-2) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (asin,x, -2*MPFR_GET_EXP (x)+2,1,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (asin,x, -2*MPFR_GET_EXP (x)+2,1,rnd_mode,{});
+ 
+   /* Set x_p=|x| (x is a normal number) */
+   mpfr_init2 (xp, MPFR_PREC (x));
+diff -Naurd mpfr-2.2.0-p9/asinh.c mpfr-2.2.0-p10/asinh.c
+--- mpfr-2.2.0-p9/asinh.c	2005-08-18 17:03:04.000000000 +0000
++++ mpfr-2.2.0-p10/asinh.c	2006-03-16 17:47:51.000000000 +0000
+@@ -62,7 +62,7 @@
+     }
+ 
+   /* asinh(x) = x - x^3/6 + ... so the error is < 2^(3*EXP(x)-2) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+2,0,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+2,0,rnd_mode,{});
+ 
+   Ny = MPFR_PREC (y);   /* Precision of output variable */
+ 
+diff -Naurd mpfr-2.2.0-p9/atan.c mpfr-2.2.0-p10/atan.c
+--- mpfr-2.2.0-p9/atan.c	2005-08-18 16:35:03.000000000 +0000
++++ mpfr-2.2.0-p10/atan.c	2006-03-16 17:47:51.000000000 +0000
+@@ -185,7 +185,7 @@
+   /* atan(x) = x - x^3/3 + x^5/5...
+      so the error is < 2^(3*EXP(x)-1)
+      so `EXP(x)-(3*EXP(x)-1)` = -2*EXP(x)+1 */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (atan,x, -2*MPFR_GET_EXP (x)+1,0,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (atan,x, -2*MPFR_GET_EXP (x)+1,0,rnd_mode,{});
+ 
+   /* Set x_p=|x| */
+   MPFR_TMP_INIT_ABS (xp, x);
+diff -Naurd mpfr-2.2.0-p9/atanh.c mpfr-2.2.0-p10/atanh.c
+--- mpfr-2.2.0-p9/atanh.c	2005-08-18 17:03:04.000000000 +0000
++++ mpfr-2.2.0-p10/atanh.c	2006-03-16 17:47:51.000000000 +0000
+@@ -71,7 +71,7 @@
+     }
+ 
+   /* atanh(x) = x + x^3/3 + ... so the error is < 2^(3*EXP(x)-1) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP (xt)+1,1,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP (xt)+1,1,rnd_mode,{});
+ 
+   MPFR_SAVE_EXPO_MARK (expo);
+ 
+diff -Naurd mpfr-2.2.0-p9/expm1.c mpfr-2.2.0-p10/expm1.c
+--- mpfr-2.2.0-p9/expm1.c	2005-08-18 17:03:06.000000000 +0000
++++ mpfr-2.2.0-p10/expm1.c	2006-03-16 17:47:51.000000000 +0000
+@@ -61,7 +61,7 @@
+     }
+ 
+   /* exp(x)-1 = x +x^2/2 + ... so the error is < 2^(2*EXP(x)-1) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -MPFR_GET_EXP (x)+1,1,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -MPFR_GET_EXP (x)+1,1,rnd_mode,{});
+ 
+   MPFR_SAVE_EXPO_MARK (expo);
+   /* General case */
+diff -Naurd mpfr-2.2.0-p9/log1p.c mpfr-2.2.0-p10/log1p.c
+--- mpfr-2.2.0-p9/log1p.c	2005-08-18 17:03:08.000000000 +0000
++++ mpfr-2.2.0-p10/log1p.c	2006-03-16 17:47:51.000000000 +0000
+@@ -63,7 +63,7 @@
+     }
+ 
+   /* log(1+x) = x-x^2/2 + ... so the error is < 2^(2*EXP(x)-1) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -MPFR_GET_EXP (x)+1,0,rnd_mode,);
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -MPFR_GET_EXP (x)+1,0,rnd_mode,{});
+ 
+   comp = mpfr_cmp_si (x, -1);
+   /* log1p(x) is undefined for x < -1 */
+diff -Naurd mpfr-2.2.0-p9/sin.c mpfr-2.2.0-p10/sin.c
+--- mpfr-2.2.0-p9/sin.c	2005-12-24 15:17:54.000000000 +0000
++++ mpfr-2.2.0-p10/sin.c	2006-03-16 17:47:51.000000000 +0000
+@@ -129,7 +129,7 @@
+     }
+ 
+   /* sin(x) = x - x^3/6 + ... so the error is < 2^(3*EXP(x)-2) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+2,0,rnd_mode, );
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+2,0,rnd_mode,{});
+ 
+   /* Compute initial precision */
+   precy = MPFR_PREC (y);
+diff -Naurd mpfr-2.2.0-p9/sinh.c mpfr-2.2.0-p10/sinh.c
+--- mpfr-2.2.0-p9/sinh.c	2005-08-18 16:35:14.000000000 +0000
++++ mpfr-2.2.0-p10/sinh.c	2006-03-16 17:47:51.000000000 +0000
+@@ -57,7 +57,7 @@
+     }
+ 
+   /* sinh(x) = x + x^3/6 + ... so the error is < 2^(3*EXP(x)-2) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP(xt)+2,1,rnd_mode, );
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP(xt)+2,1,rnd_mode,{});
+ 
+   MPFR_TMP_INIT_ABS (x, xt);
+ 
+diff -Naurd mpfr-2.2.0-p9/tan.c mpfr-2.2.0-p10/tan.c
+--- mpfr-2.2.0-p9/tan.c	2005-08-18 16:35:15.000000000 +0000
++++ mpfr-2.2.0-p10/tan.c	2006-03-16 17:47:51.000000000 +0000
+@@ -53,7 +53,7 @@
+     }
+ 
+   /* tan(x) = x + x^3/3 + ... so the error is < 2^(3*EXP(x)-1) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+1,1,rnd_mode, );
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, x, -2*MPFR_GET_EXP (x)+1,1,rnd_mode,{});
+ 
+   MPFR_SAVE_EXPO_MARK (expo);
+ 
+diff -Naurd mpfr-2.2.0-p9/tanh.c mpfr-2.2.0-p10/tanh.c
+--- mpfr-2.2.0-p9/tanh.c	2005-08-18 17:03:12.000000000 +0000
++++ mpfr-2.2.0-p10/tanh.c	2006-03-16 17:47:51.000000000 +0000
+@@ -56,7 +56,7 @@
+     }
+ 
+   /* tanh(x) = x - x^3/3 + ... so the error is < 2^(3*EXP(x)-1) */
+-  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP(xt)+1,0,rnd_mode, );
++  MPFR_FAST_COMPUTE_IF_SMALL_INPUT (y, xt, -2*MPFR_GET_EXP(xt)+1,0,rnd_mode,{});
+ 
+   MPFR_TMP_INIT_ABS (x, xt);
+ 
+diff -Naurd mpfr-2.2.0-p9/zeta.c mpfr-2.2.0-p10/zeta.c
+--- mpfr-2.2.0-p9/zeta.c	2005-09-16 14:36:54.000000000 +0000
++++ mpfr-2.2.0-p10/zeta.c	2006-03-16 17:47:51.000000000 +0000
+@@ -175,7 +175,7 @@
+       else
+         err = ((mp_exp_t)1) << err;
+       err = 1 - (-err+1); /* GET_EXP(one) - (-err+1) = err :) */
+-      MPFR_FAST_COMPUTE_IF_SMALL_INPUT (z, __gmpfr_one, err, 1, rnd_mode, );
++      MPFR_FAST_COMPUTE_IF_SMALL_INPUT (z, __gmpfr_one, err, 1, rnd_mode,{});
+     }
+ 
+   d = precz + MPFR_INT_CEIL_LOG2(precz) + 10;
