@@ -1,15 +1,13 @@
 Summary:	Multiple-precision floating-point computations library
 Summary(pl):	Biblioteka obliczeñ zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	2.2.0
+Version:	2.2.1
 Release:	1
 License:	LGPL
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.bz2
-# Source0-md5:	1a81f721ee78cb027f6c41a243d3a33d
+# Source0-md5:	40bf06f8081461d8db7d6f4ad5b9f6bd
 Patch0:		%{name}-info.patch
-# http://www.mpfr.org/mpfr-current/patches
-Patch1:		%{name}-site.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	gmp-devel >= 4.1.0
 BuildRequires:	texinfo
@@ -63,12 +61,12 @@ Statyczna biblioteka MPFR.
 %prep
 %setup -q
 %patch0 -p1
-%patch1 -p1
 
 %build
 %configure \
 	--enable-shared
-%{__make}
+
+%{__make} all check
 
 %install
 rm -rf $RPM_BUILD_ROOT
