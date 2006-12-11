@@ -66,13 +66,17 @@ Statyczna biblioteka MPFR.
 %configure \
 	--enable-shared
 
-%{__make} all check
+# make -j4 creates truncated .lo files
+%{__make} -j1 all
+%{__make} check
 
 %install
 rm -rf $RPM_BUILD_ROOT
 
 %{__make} install \
 	DESTDIR=$RPM_BUILD_ROOT
+
+rm -f $RPM_BUILD_ROOT%{_infodir}/dir
 
 %clean
 rm -rf $RPM_BUILD_ROOT
