@@ -9,7 +9,10 @@ Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.bz2
 # Source0-md5:	40bf06f8081461d8db7d6f4ad5b9f6bd
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
+BuildRequires:	autoconf >= 2.50
+BuildRequires:	automake >= 1.6
 BuildRequires:	gmp-devel >= 4.1.0
+BuildRequires:	libtool
 BuildRequires:	texinfo
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -63,6 +66,10 @@ Statyczna biblioteka MPFR.
 %patch0 -p1
 
 %build
+%{__libtoolize}
+%{__aclocal}
+%{__autoconf}
+%{__automake}
 %configure \
 	--enable-shared
 
