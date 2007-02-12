@@ -1,5 +1,5 @@
 Summary:	Multiple-precision floating-point computations library
-Summary(pl):	Biblioteka obliczeÒ zmiennoprzecinkowych wielokrotnej precyzji
+Summary(pl.UTF-8):   Biblioteka oblicze≈Ñ zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
 Version:	2.2.1
 Release:	1
@@ -25,19 +25,19 @@ which is both efficient and has a well-defined semantics. It copies
 the good ideas from the ANSI/IEEE-754 standard for double-precision
 floating-point arithmetic (53-bit mantissa).
 
-%description -l pl
-Biblioteka MPFR to biblioteka C do obliczeÒ zmiennoprzecinkowych z
-wielokrotn± precyzj± i dok≥adnym zaokr±glaniem (zwanym takøe poprawnym
-zaokr±glaniem). Jest oparta na bibliotece GMP wielokrotnej precyzji.
-G≥Ûwnym celem MPFR jest dostarczenie biblioteki do obliczeÒ
-zmiennoprzecinkowych wielokrotnej precyzji, ktÛra jest wydajna i ma
-dobrze zdefiniowan± semantykÍ. Powiela dobre idee ze standardu
-ANSI/IEEE-754 dla arytmetyki zmiennoprzecinkowej podwÛjnej precyzji (z
-53-bitow± mantys±).
+%description -l pl.UTF-8
+Biblioteka MPFR to biblioteka C do oblicze≈Ñ zmiennoprzecinkowych z
+wielokrotnƒÖ precyzjƒÖ i dok≈Çadnym zaokrƒÖglaniem (zwanym tak≈ºe poprawnym
+zaokrƒÖglaniem). Jest oparta na bibliotece GMP wielokrotnej precyzji.
+G≈Ç√≥wnym celem MPFR jest dostarczenie biblioteki do oblicze≈Ñ
+zmiennoprzecinkowych wielokrotnej precyzji, kt√≥ra jest wydajna i ma
+dobrze zdefiniowanƒÖ semantykƒô. Powiela dobre idee ze standardu
+ANSI/IEEE-754 dla arytmetyki zmiennoprzecinkowej podw√≥jnej precyzji (z
+53-bitowƒÖ mantysƒÖ).
 
 %package devel
 Summary:	Header files for MPFR library
-Summary(pl):	Pliki nag≥Ûwkowe biblioteki MPFR
+Summary(pl.UTF-8):   Pliki nag≈Ç√≥wkowe biblioteki MPFR
 Group:		Development/Libraries
 Requires:	%{name} = %{version}-%{release}
 Requires:	gmp-devel >= 4.1.0
@@ -46,19 +46,19 @@ Obsoletes:	libmpfr-devel
 %description devel
 Header files for MPFR library.
 
-%description devel -l pl
-Pliki nag≥Ûwkowe biblioteki MPFR.
+%description devel -l pl.UTF-8
+Pliki nag≈Ç√≥wkowe biblioteki MPFR.
 
 %package static
 Summary:	Static MPFR library
-Summary(pl):	Statyczna biblioteka MPFR
+Summary(pl.UTF-8):   Statyczna biblioteka MPFR
 Group:		Development/Libraries
 Requires:	%{name}-devel = %{version}-%{release}
 
 %description static
 Static MPFR library.
 
-%description static -l pl
+%description static -l pl.UTF-8
 Statyczna biblioteka MPFR.
 
 %prep
