@@ -1,5 +1,5 @@
 Summary:	Multiple-precision floating-point computations library
-Summary(pl.UTF-8):   Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
+Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
 Version:	2.2.1
 Release:	1
@@ -37,7 +37,7 @@ ANSI/IEEE-754 dla arytmetyki zmiennoprzecinkowej podwójnej precyzji (z
 
 %package devel
 Summary:	Header files for MPFR library
-Summary(pl.UTF-8):   Pliki nagłówkowe biblioteki MPFR
+Summary(pl.UTF-8):	Pliki nagłówkowe biblioteki MPFR
 Group:		Development/Libraries
 Requires:	%{name} = %{version}-%{release}
 Requires:	gmp-devel >= 4.1.0
@@ -51,7 +51,7 @@ Pliki nagłówkowe biblioteki MPFR.
 
 %package static
 Summary:	Static MPFR library
-Summary(pl.UTF-8):   Statyczna biblioteka MPFR
+Summary(pl.UTF-8):	Statyczna biblioteka MPFR
 Group:		Development/Libraries
 Requires:	%{name}-devel = %{version}-%{release}
 
