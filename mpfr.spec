@@ -1,3 +1,7 @@
+#
+# Conditional build:
+%bcond_without	test	# don't perform make check
+#
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
@@ -75,7 +79,10 @@ Statyczna biblioteka MPFR.
 
 # make -j4 creates truncated .lo files
 %{__make} -j1 all
+
+%if %{with tests}
 %{__make} check
+%endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
