@@ -1,16 +1,16 @@
 #
 # Conditional build:
-%bcond_without	test	# don't perform make check
+%bcond_without	tests	# don't perform make check
 #
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	2.2.1
+Version:	2.3.0
 Release:	1
 License:	LGPL
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.bz2
-# Source0-md5:	40bf06f8081461d8db7d6f4ad5b9f6bd
+# Source0-md5:	cf7c743e4be122e63eb6f372fc58b657
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
