@@ -7,7 +7,7 @@ Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyz
 Name:		mpfr
 Version:	2.3.1
 Release:	1
-License:	LGPL
+License:	LGPL v2.1+
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.bz2
 # Source0-md5:	8352b619e04dcc73411a38b39dd855f6
@@ -98,16 +98,17 @@ rm -rf $RPM_BUILD_ROOT
 %post	-p /sbin/ldconfig
 %postun	-p /sbin/ldconfig
 
-%post devel	-p	/sbin/postshell
+%post	devel -p /sbin/postshell
 -/usr/sbin/fix-info-dir -c %{_infodir}
 
-%postun devel	-p	/sbin/postshell
+%postun	devel -p /sbin/postshell
 -/usr/sbin/fix-info-dir -c %{_infodir}
 
 %files
 %defattr(644,root,root,755)
 %doc AUTHORS BUGS ChangeLog FAQ.html NEWS README TODO
 %attr(755,root,root) %{_libdir}/libmpfr.so.*.*.*
+%attr(755,root,root) %ghost %{_libdir}/libmpfr.so.1
 
 %files devel
 %defattr(644,root,root,755)
