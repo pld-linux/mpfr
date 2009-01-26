@@ -4,7 +4,7 @@
  @c  UPDATED-MONTH.
  
  
--@dircategory GNU libraries
+-@dircategory Software libraries
 +@dircategory Libraries
  @direntry
 -* mpfr: (mpfr).                 Multiple Precision Floating-Point Reliable Library.
