@@ -71,7 +71,7 @@ Statyczna biblioteka MPFR.
 
 %build
 %{__libtoolize}
-%{__aclocal}
+%{__aclocal} -I m4
 %{__autoconf}
 %{__automake}
 %configure \
