@@ -5,19 +5,21 @@
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	2.4.2
-Release:	2
-License:	LGPL v2.1+
+Version:	3.0.0
+Release:	1
+License:	LGPL v3+
 Group:		Libraries
-Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.bz2
-# Source0-md5:	89e59fe665e2b3ad44a6789f40b059a0
+Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
+# Source0-md5:	8ab3bef2864b8c6e6a291f5603141bbd
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
 BuildRequires:	automake >= 1.6
 BuildRequires:	gmp-devel >= 4.1.0
 BuildRequires:	libtool
+BuildRequires:	tar >= 1:1.22
 BuildRequires:	texinfo
+BuildRequires:	xz
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
@@ -108,7 +110,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %doc AUTHORS BUGS ChangeLog FAQ.html NEWS README TODO
 %attr(755,root,root) %{_libdir}/libmpfr.so.*.*.*
-%attr(755,root,root) %ghost %{_libdir}/libmpfr.so.1
+%attr(755,root,root) %ghost %{_libdir}/libmpfr.so.4
 
 %files devel
 %defattr(644,root,root,755)
