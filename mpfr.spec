@@ -5,12 +5,12 @@
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	3.0.1
+Version:	3.1.0
 Release:	1
 License:	LGPL v3+
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
-# Source0-md5:	645882d9d179113a70af84d27086ed9f
+# Source0-md5:	6e495841bb026481567006cec0f821c3
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
@@ -20,6 +20,7 @@ BuildRequires:	libtool
 BuildRequires:	tar >= 1:1.22
 BuildRequires:	texinfo
 BuildRequires:	xz
+Requires:	gmp >= 4.1.0
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
@@ -71,7 +72,14 @@ Statyczna biblioteka MPFR.
 %setup -q
 %patch0 -p1
 
+# triggers bug in gold (as of binutils-2.21.53.0.2-1.i686)
+mkdir my-ld
+if [ -x /usr/bin/ld.bfd ]; then
+	ln -s /usr/bin/ld.bfd my-ld/ld
+fi
+
 %build
+export PATH=$PWD/my-ld:$PATH
 %{__libtoolize}
 %{__aclocal} -I m4
 %{__autoconf}
@@ -108,7 +116,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc AUTHORS BUGS ChangeLog FAQ.html NEWS README TODO
+%doc AUTHORS BUGS ChangeLog NEWS README TODO doc/FAQ.html
 %attr(755,root,root) %{_libdir}/libmpfr.so.*.*.*
 %attr(755,root,root) %ghost %{_libdir}/libmpfr.so.4
 
