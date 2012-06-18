@@ -12,6 +12,7 @@ Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
 # Source0-md5:	6e495841bb026481567006cec0f821c3
 Patch0:		%{name}-info.patch
+Patch1:		%{name}-automake-1_12.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
 BuildRequires:	automake >= 1.6
@@ -71,6 +72,7 @@ Statyczna biblioteka MPFR.
 %prep
 %setup -q
 %patch0 -p1
+%patch1 -p1
 
 # triggers bug in gold (as of binutils-2.21.53.0.2-1.i686)
 mkdir my-ld
