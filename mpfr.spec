@@ -14,7 +14,7 @@ Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
-BuildRequires:	automake >= 1.6
+BuildRequires:	automake >= 1:1.11
 BuildRequires:	gmp-devel >= 4.1.0
 BuildRequires:	libtool
 BuildRequires:	tar >= 1:1.22
