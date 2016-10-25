@@ -5,12 +5,12 @@
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	3.1.4
+Version:	3.1.5
 Release:	1
 License:	LGPL v3+
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
-# Source0-md5:	064b2c18185038e404a401b830d59be8
+# Source0-md5:	c4ac246cf9795a4491e7766002cd528f
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
