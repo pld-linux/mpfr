@@ -5,22 +5,22 @@
 Summary:	Multiple-precision floating-point computations library
 Summary(pl.UTF-8):	Biblioteka obliczeń zmiennoprzecinkowych wielokrotnej precyzji
 Name:		mpfr
-Version:	3.1.6
+Version:	4.0.1
 Release:	1
 License:	LGPL v3+
 Group:		Libraries
 Source0:	http://www.mpfr.org/mpfr-current/%{name}-%{version}.tar.xz
-# Source0-md5:	51bfdbf81553966c8d43808122cc81b3
+# Source0-md5:	b8dd19bd9bb1ec8831a6a582a7308073
 Patch0:		%{name}-info.patch
 URL:		http://www.mpfr.org/
 BuildRequires:	autoconf >= 2.50
 BuildRequires:	automake >= 1:1.13
-BuildRequires:	gmp-devel >= 4.1.0
+BuildRequires:	gmp-devel >= 5.0
 BuildRequires:	libtool
 BuildRequires:	tar >= 1:1.22
 BuildRequires:	texinfo
 BuildRequires:	xz
-Requires:	gmp >= 4.1.0
+Requires:	gmp >= 5.0
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
@@ -47,7 +47,7 @@ Summary:	Header files for MPFR library
 Summary(pl.UTF-8):	Pliki nagłówkowe biblioteki MPFR
 Group:		Development/Libraries
 Requires:	%{name} = %{version}-%{release}
-Requires:	gmp-devel >= 4.1.0
+Requires:	gmp-devel >= 5.0
 Obsoletes:	libmpfr-devel
 
 %description devel
@@ -100,6 +100,14 @@ rm -rf $RPM_BUILD_ROOT
 %{__make} install \
 	DESTDIR=$RPM_BUILD_ROOT
 
+# obsoleted by pkg-config
+%{__rm} $RPM_BUILD_ROOT%{_libdir}/libmpfr.la
+# move to PLD specific place
+install -d $RPM_BUILD_ROOT%{_examplesdir}
+%{__mv} $RPM_BUILD_ROOT%{_docdir}/mpfr/examples $RPM_BUILD_ROOT%{_examplesdir}/%{name}-%{version}
+# packaged as %doc
+%{__rm} $RPM_BUILD_ROOT%{_docdir}/mpfr/*
+
 rm -f $RPM_BUILD_ROOT%{_infodir}/dir
 
 %clean
@@ -118,15 +126,16 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %doc AUTHORS BUGS ChangeLog NEWS README TODO doc/FAQ.html
 %attr(755,root,root) %{_libdir}/libmpfr.so.*.*.*
-%attr(755,root,root) %ghost %{_libdir}/libmpfr.so.4
+%attr(755,root,root) %ghost %{_libdir}/libmpfr.so.6
 
 %files devel
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_libdir}/libmpfr.so
-%{_libdir}/libmpfr.la
 %{_includedir}/mpfr.h
 %{_includedir}/mpf2mpfr.h
+%{_pkgconfigdir}/mpfr.pc
 %{_infodir}/mpfr.info*
+%{_examplesdir}/%{name}-%{version}
 
 %files static
 %defattr(644,root,root,755)
