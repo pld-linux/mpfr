@@ -71,7 +71,7 @@ Statyczna biblioteka MPFR.
 
 %prep
 %setup -q
-%patch0 -p1
+%patch -P0 -p1
 
 # triggers bug in gold (as of binutils-2.21.53.0.2-1.i686)
 mkdir my-ld
